@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct PipModifier<ContentView: View>: ViewModifier {
+public struct PipModifier<ContentView: View>: ViewModifier {
     private let baseSize = CGSize(width: 150, height: 100)
     
     @State private var rotation: CGFloat = 0
@@ -95,7 +95,7 @@ struct PipModifier<ContentView: View>: ViewModifier {
         }
     }
     
-    func body(content: Content) -> some View {
+    public func body(content: Content) -> some View {
         return GeometryReader { proxy in
             content.overlay(alignment: self.position.alignemnt) {
                 contentView()
@@ -165,7 +165,7 @@ struct PipModifier<ContentView: View>: ViewModifier {
     }
 }
 
-extension View {
+public extension View {
     /// Presents the ``content`` as a PiP view over the view that it is applied to
     func pip(positions: [PipPosition] = .allPositions,
              sizes: [PipSize] = .allSizes,

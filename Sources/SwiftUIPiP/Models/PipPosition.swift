@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Represents the position of the PiP view in the parent
-enum PipPosition {
+public enum PipPosition {
     case topLeading
     case topTrailing
     case bottomLeading
@@ -24,7 +24,7 @@ enum PipPosition {
     }
 }
 
-extension Array where Element == PipPosition {
+public extension Array where Element == PipPosition {
     static var allPositions: Self {
         [.topLeading, .topTrailing, .bottomTrailing, .bottomLeading]
     }
