@@ -9,6 +9,18 @@ import Foundation
 
 extension Numeric where Self: Comparable {
     
+    /// Returns the bound of the given range that is closer to this value
+    func closest(of rangeBounds: ClosedRange<Self>) -> Self {
+        let deltaLower = self - rangeBounds.lowerBound
+        let deltaUpper = rangeBounds.upperBound - self
+        
+        if deltaLower > deltaUpper {
+            return rangeBounds.upperBound
+        } else {
+            return rangeBounds.lowerBound
+        }
+    }
+    
     /// Limit the value by an upper limit.
     /// - Returns: This value or the limit if the value is greater than it
     func max(_ limit: Self) -> Self {
