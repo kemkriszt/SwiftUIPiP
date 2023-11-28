@@ -8,8 +8,6 @@
 import SwiftUI
 
 public struct PipModifier<ContentView: View>: ViewModifier {
-    private let baseSize = CGSize(width: 150, height: 100)
-    
     @State private var rotation: CGFloat = 0
     @State private var scale: CGFloat = 1
     @State private var offset: CGSize = .zero
@@ -19,6 +17,7 @@ public struct PipModifier<ContentView: View>: ViewModifier {
     
     @ViewBuilder let contentView: () -> ContentView
     
+    let baseSize: CGSize
     let enabledPosition: Set<PipPosition>
     let enabledSizes: Set<PipSize>
     
@@ -35,10 +34,12 @@ public struct PipModifier<ContentView: View>: ViewModifier {
         }
     }
     
-    init(enabledPosition: [PipPosition],
+    init(baseSize: CGSize = CGSize(width: 150, height: 100),
+         enabledPosition: [PipPosition],
          enabledSizes: [PipSize],
          contentView: @escaping () -> ContentView) {
         
+        self.baseSize = baseSize
         self.contentView = contentView
         self.enabledPosition = Set(enabledPosition)
         self.enabledSizes = Set(enabledSizes)
@@ -125,14 +126,31 @@ public struct PipModifier<ContentView: View>: ViewModifier {
     }
     
     private func newPosition(with translation: CGSize, and proxy: GeometryProxy) -> PipPosition {
-        // TODO: Use distance of each corner to their coresponding corner of the parent otherwise the large size may not provide a good UX
+        // Compare the center of the view to all 4 corners of the parent and find which one is
+        // closer to the current position where the user holds the view
         let frame = proxy.frame(in: .local)
+        // Calculate the current location
         let originalLocation = self.location(for: self.position, in: frame)
         let newLocation = originalLocation + translation
+
+        // Calculate the center point relative to self
+        let midX = size.width / 2
+        let midY = size.width / 2
         
-        let isTrailing = newLocation.x > frame.width / 2
-        let isTop = newLocation.y < frame.height / 2
+        // Calculate deltas. We offset the parent frames dimensions with our current size so we are
+        // not comparing to the parent's border
+        let deltaLeading = abs(midX - newLocation.x)
+        let deltaTrailing = abs(frame.width - midX - newLocation.x)
+        let deltaTop = abs(midY - newLocation.y)
+        let deltaBottom = abs(frame.height - midY - newLocation.y)
         
+        // Find the smaller delta
+        let minDeltaY = min(deltaTop, deltaBottom)
+        let minDeltaX = min(deltaLeading, deltaTrailing)
+        
+        // Determine position
+        let isTrailing = minDeltaX == deltaTrailing
+        let isTop = minDeltaY == deltaTop
         
         switch (isTrailing, isTop) {
         case (true, true):
@@ -146,12 +164,18 @@ public struct PipModifier<ContentView: View>: ViewModifier {
         }
     }
     
+    /// Return the center point in the given frame corresponding to the current position
+    /// - Note: The current position is determined by the current PipPosition and ignores the current offset
     private func location(for currentPosition: PipPosition, in frame: CGRect) -> CGPoint {
+        // Center point relative to self
+        let midX = size.width / 2
+        let midY = size.height / 2
+        
         switch currentPosition {
-        case .topLeading: .init(x: 0, y: 0)
-        case .topTrailing: .init(x: frame.width, y: 0)
-        case .bottomLeading: .init(x: 0, y: frame.height)
-        default: .init(x: frame.width, y: frame.height)
+        case .topLeading: return .init(x: midX, y: midY)
+        case .topTrailing: return .init(x: frame.width - midX, y: midY)
+        case .bottomLeading: return .init(x: midX, y: frame.height - midY)
+        case .bottomTrailing: return .init(x: frame.width - midX, y: frame.height - midY)
         }
     }
 }
