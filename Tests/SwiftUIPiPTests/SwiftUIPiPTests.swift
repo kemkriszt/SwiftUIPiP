@@ -15,4 +15,9 @@ final class SwiftUIPiPTests: XCTestCase {
         XCTAssertEqual(3.between(4...6), 4)
         XCTAssertEqual(3.between(0...2), 2)
     }
+    
+    func testClosest() {
+        XCTAssertEqual(3.closest(of: 2...10), 2)
+        XCTAssertEqual(9.closest(of: 2...10), 10)
+    }
 }

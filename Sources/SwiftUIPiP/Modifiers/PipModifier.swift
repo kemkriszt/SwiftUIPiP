@@ -44,33 +44,84 @@ public struct PipModifier<ContentView: View>: ViewModifier {
         self.enabledSizes = Set(enabledSizes)
     }
     
-    /// This could probably be written more inteligently but its good enough for now
-    private func getNewSize() -> PipSize {
-        let newSize = self.currentSize.rawValue * self.scale
-        
-        if newSize < PipSize.small.rawValue {
-            return .small
-        } else if newSize >= PipSize.small.rawValue && newSize < PipSize.medium.rawValue {
-            let deltaSmall = newSize - PipSize.small.rawValue
-            let deltaMedium = PipSize.medium.rawValue - newSize
-            
-            if deltaSmall > deltaMedium {
-                return .medium
-            } else {
-                return .small
+    public func body(content: Content) -> some View {
+        return GeometryReader { proxy in
+            content.overlay(alignment: self.position.alignemnt) {
+                contentView()
+                    .frame(width: size.width, height: size.height)
+                    .padding()
+                    .contentShape(Rectangle())
+                    .scaleEffect(scale, anchor: scaleAnchor)
+                    .rotationEffect(.degrees(self.rotation), anchor: .bottom)
+                    .offset(offset)
+                    .gesture(
+                        self.magnifyGesture()
+                            .simultaneously(with: dragGesture(proxy: proxy))
+                            .simultaneously(with: rotateGesture())
+                    )
             }
-        } else if newSize >= PipSize.medium.rawValue  && newSize < PipSize.large.rawValue {
-            let deltaMedium = newSize - PipSize.medium.rawValue
-            let deltaLarge = PipSize.large.rawValue - newSize
-            
-            if deltaMedium > deltaLarge {
-                return .large
-            } else {
-                return .medium
-            }
-        } else {
-            return .large
         }
+    }
+    
+    // MARK: - Gestures
+    
+    private func magnifyGesture() -> some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                withAnimation(.interactiveSpring) {
+                    self.scale = value.magnification.max(3)
+                }
+            }
+            .onEnded { _ in
+                withAnimation(.spring(.bouncy())) {
+                    self.currentSize = self.newSize()
+                    self.scale = 1
+                }
+            }
+    }
+    
+    private func rotateGesture() -> some Gesture {
+        RotateGesture()
+                .onChanged { gesture in
+                    withAnimation(.interactiveSpring) {
+                        self.rotation = (gesture.rotation.degrees / 2).between(-10...10)
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(.bouncy())) {
+                        self.rotation = 0
+                    }
+                }
+    }
+    
+    private func dragGesture(proxy: GeometryProxy) -> some Gesture {
+        DragGesture()
+            .onChanged { gesture in
+                withAnimation(.interactiveSpring) {
+                    self.offset = gesture.translation
+                }
+            }
+            .onEnded { gesture in
+                var finalPosition = self.newPosition(with: gesture.translation,
+                                                     and: proxy)
+                if finalPosition == self.position {
+                    finalPosition = self.newPosition(with: gesture.velocity,
+                                                     and: proxy)
+                }
+                withAnimation(.spring(.bouncy())) {
+                    if self.enabledPosition.contains(finalPosition) {
+                        self.position = finalPosition
+                    }
+                    self.offset = .zero
+                }
+            }
+    }
+    
+    // MARK: - Helpers
+    
+    private func newSize() -> PipSize {
+        let newSize = self.currentSize.rawValue * self.scale
+        return PipSize.closest(to: newSize)
     }
     
     private func newPosition(with translation: CGSize, and proxy: GeometryProxy) -> PipPosition {
@@ -92,66 +143,6 @@ public struct PipModifier<ContentView: View>: ViewModifier {
             return .topLeading
         case (false, false):
             return .bottomLeading
-        }
-    }
-    
-    public func body(content: Content) -> some View {
-        return GeometryReader { proxy in
-            content.overlay(alignment: self.position.alignemnt) {
-                contentView()
-                    .frame(width: size.width, height: size.height)
-                    .padding()
-                    .contentShape(Rectangle())
-                    .scaleEffect(scale, anchor: scaleAnchor)
-                    .rotationEffect(.degrees(self.rotation), anchor: .bottom)
-                    .offset(offset)
-                    .gesture(
-                        MagnifyGesture()
-                            .onChanged { value in
-                                withAnimation(.interactiveSpring) {
-                                    self.scale = value.magnification.max(3)
-                                }
-                            }
-                            .onEnded { _ in
-                                withAnimation(.spring(.bouncy())) {
-                                    self.currentSize = self.getNewSize()
-                                    self.scale = 1
-                                }
-                            }.simultaneously(with: DragGesture()
-                                .onChanged { gesture in
-                                    withAnimation(.interactiveSpring) {
-                                        self.offset = gesture.translation
-                                    }
-                                }
-                                .onEnded { gesture in
-                                    // TODO: Velocity
-                                    
-                                    var finalPosition = self.newPosition(with: gesture.translation,
-                                                                         and: proxy)
-                                    if finalPosition == self.position {
-                                        finalPosition = self.newPosition(with: gesture.velocity,
-                                                                         and: proxy)
-                                    }
-                                    withAnimation(.spring(.bouncy())) {
-                                        if self.enabledPosition.contains(finalPosition) {
-                                            self.position = finalPosition
-                                        }
-                                        self.offset = .zero
-                                    }
-                                }).simultaneously(with: RotateGesture()
-                                    .onChanged { gesture in
-                                        withAnimation(.interactiveSpring) {
-                                            self.rotation = (gesture.rotation.degrees / 2).between(-10...10)
-                                        }
-                                    }
-                                    .onEnded { _ in
-                                        withAnimation(.spring(.bouncy())) {
-                                            self.rotation = 0
-                                        }
-                                    }
-                                )
-                    )
-            }
         }
     }
     
