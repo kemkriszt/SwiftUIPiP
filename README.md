@@ -1,7 +1,7 @@
 # SwiftUIPiP
 ![version](https://img.shields.io/github/v/tag/kemkriszt/SwiftUIPiP?label=version)
 
-A small package that provides a pip modifier for SwiftUI
+A small package that provides a picture in picture modifier for SwiftUI
 
 The pip view can be moved by the user to all four corners and can be resized to three different sizes
 
