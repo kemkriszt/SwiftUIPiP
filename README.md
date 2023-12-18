@@ -1,5 +1,5 @@
 # SwiftUIPiP
-![release](https://img.shields.io/github/downloads/kemkriszt/SwiftUIPiP/0.1.1/total)
+![version](https://img.shields.io/github/v/tag/kemkriszt/SwiftUIPiP?label=version)
 
 A small package that provides a pip modifier for SwiftUI
 
