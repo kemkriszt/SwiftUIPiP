@@ -56,9 +56,9 @@ public struct PipModifier<ContentView: View>: ViewModifier {
                     .rotationEffect(.degrees(self.rotation), anchor: .bottom)
                     .offset(offset)
                     .gesture(
-                        self.magnifyGesture()
-                            .simultaneously(with: dragGesture(proxy: proxy))
-                            .simultaneously(with: rotateGesture())
+                        dragGesture(proxy: proxy)
+                            .simultaneously(with: magnifyGesture(proxy: proxy))
+                            .simultaneously(with: rotateGesture(proxy: proxy))
                     )
             }
         }
@@ -66,7 +66,7 @@ public struct PipModifier<ContentView: View>: ViewModifier {
     
     // MARK: - Gestures
     
-    private func magnifyGesture() -> some Gesture {
+    private func magnifyGesture(proxy: GeometryProxy) -> some Gesture {
         MagnifyGesture()
             .onChanged { value in
                 withAnimation(.interactiveSpring) {
@@ -78,10 +78,13 @@ public struct PipModifier<ContentView: View>: ViewModifier {
                     self.currentSize = self.newSize()
                     self.scale = 1
                 }
+                findFinalPosition(translation: self.offset,
+                                  velocity: .zero,
+                                  proxy: proxy)
             }
     }
     
-    private func rotateGesture() -> some Gesture {
+    private func rotateGesture(proxy: GeometryProxy) -> some Gesture {
         RotateGesture()
                 .onChanged { gesture in
                     withAnimation(.interactiveSpring) {
@@ -92,6 +95,9 @@ public struct PipModifier<ContentView: View>: ViewModifier {
                     withAnimation(.spring(.bouncy())) {
                         self.rotation = 0
                     }
+                    findFinalPosition(translation: self.offset,
+                                      velocity: .zero,
+                                      proxy: proxy)
                 }
     }
     
@@ -103,28 +109,35 @@ public struct PipModifier<ContentView: View>: ViewModifier {
                 }
             }
             .onEnded { gesture in
-                var finalPosition = self.newPosition(with: gesture.translation,
-                                                     and: proxy)
-                if finalPosition == self.position {
-                    finalPosition = self.newPosition(with: gesture.velocity,
-                                                     and: proxy)
-                }
-                withAnimation(.spring(.bouncy())) {
-                    if self.enabledPosition.contains(finalPosition) {
-                        self.position = finalPosition
-                    }
-                    self.offset = .zero
-                }
+                findFinalPosition(translation: gesture.translation,
+                                  velocity: gesture.velocity,
+                                  proxy: proxy)
             }
     }
     
     // MARK: - Helpers
+    
+    private func findFinalPosition(translation: CGSize, velocity: CGSize, proxy: GeometryProxy) {
+        var finalPosition = self.newPosition(with: translation,
+                                             and: proxy)
+        if finalPosition == self.position {
+            finalPosition = self.newPosition(with: velocity,
+                                             and: proxy)
+        }
+        withAnimation(.spring(.bouncy())) {
+            if self.enabledPosition.contains(finalPosition) {
+                self.position = finalPosition
+            }
+            self.offset = .zero
+        }
+    }
     
     private func newSize() -> PipSize {
         let newSize = self.currentSize.rawValue * self.scale
         return PipSize.closest(to: newSize)
     }
     
+    /// Determine the new position for thre pip view based on its current translation in its parent
     private func newPosition(with translation: CGSize, and proxy: GeometryProxy) -> PipPosition {
         // Compare the center of the view to all 4 corners of the parent and find which one is
         // closer to the current position where the user holds the view
